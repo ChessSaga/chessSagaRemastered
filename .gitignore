@@ -1,0 +1,33 @@
+# Node
+node_modules/
+npm-debug.log*
+pnpm-lock.yaml
+yarn.lock
+
+# Vite build
+dist/
+
+# Local env
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+.vercel
+
+.vercel
+.env*.local

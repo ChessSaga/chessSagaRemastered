@@ -1,0 +1,136 @@
+{
+  "project_name": "whatsapp-lead-funnel-trial-payment",
+  "objective": "plan to Extend an existing React (Vite) website to support a marketing funnel where users coming from WhatsApp can request a free trial and later purchase a paid course using Razorpay.",
+  "context": {
+    "existing_system": "A React (Vite) website already exists and uses Sanity CMS for content. The website is deployed and functional. We are adding new funnel functionality on top of the existing system.",
+    "marketing_flow": [
+      "Meta Ads",
+      "User clicks ad and opens WhatsApp chat",
+      "Automated WhatsApp chatbot conversation",
+      "User clicks 'Schedule Trial'",
+      "User is redirected to the website trial page",
+      "User submits a trial request form",
+      "Trainer contacts the user manually",
+      "Trainer sends course enrollment link",
+      "User visits enroll page and completes payment"
+    ]
+  },
+  "features_to_build": [
+    {
+      "feature_name": "trial_request_page",
+      "route": "/trial",
+      "description": "Create a trial request page that captures leads coming from WhatsApp.",
+      "form_fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "child_age",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "whatsapp_number",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "behavior": [
+        "Validate required fields",
+        "Submit form data to backend",
+        "Store trial lead in Sanity CMS",
+        "Display confirmation message after submission"
+      ]
+    },
+    {
+      "feature_name": "lead_storage",
+      "description": "Store trial leads in Sanity CMS so trainers can view and follow up with leads.",
+      "sanity_schema": {
+        "document_name": "trialLead",
+        "fields": [
+          "name",
+          "childAge",
+          "whatsappNumber",
+          "message",
+          "createdAt"
+        ]
+      }
+    },
+    {
+      "feature_name": "course_enroll_page",
+      "route": "/enroll",
+      "description": "Create a page where users can purchase the course after completing the trial.",
+      "page_elements": [
+        "Course title",
+        "Program description",
+        "Price",
+        "Enroll Now button"
+      ]
+    },
+    {
+      "feature_name": "payment_integration",
+      "provider": "Razorpay",
+      "description": "Implement secure payment using Razorpay with server-side verification.",
+      "flow": [
+        "User clicks Enroll button",
+        "Frontend calls serverless API to create Razorpay order",
+        "Razorpay checkout opens",
+        "User completes payment",
+        "Server verifies payment signature",
+        "User redirected to success page"
+      ]
+    },
+    {
+      "feature_name": "serverless_apis",
+      "description": "Create serverless endpoints for Razorpay integration.",
+      "endpoints": [
+        {
+          "endpoint": "/api/create-order",
+          "method": "POST",
+          "responsibility": "Generate Razorpay order"
+        },
+        {
+          "endpoint": "/api/verify-payment",
+          "method": "POST",
+          "responsibility": "Verify Razorpay payment signature"
+        }
+      ]
+    },
+    {
+      "feature_name": "payment_success_page",
+      "route": "/payment-success",
+      "description": "Display confirmation after successful course purchase.",
+      "message": "Payment successful. Our team will contact you with next steps."
+    },
+    {
+      "feature_name": "meta_pixel_tracking",
+      "description": "Track marketing conversions for Meta Ads.",
+      "events": [
+        "PageView",
+        "Lead (trial request submission)",
+        "Purchase (successful payment)"
+      ]
+    }
+  ],
+  "tech_stack": {
+    "frontend": "React with Vite",
+    "cms": "Sanity CMS",
+    "backend": "Vercel Serverless Functions",
+    "payment_gateway": "Razorpay"
+  },
+  "development_priority": [
+    "Build trial request page",
+    "Store leads in Sanity",
+    "Build enroll page",
+    "Implement Razorpay serverless APIs",
+    "Add payment success page",
+    "Add Meta tracking"
+  ]
+}
