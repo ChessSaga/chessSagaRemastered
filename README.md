@@ -10,11 +10,6 @@ npm install
 npm run dev
 ```
 
-Run the admin backend API in another terminal:
-```powershell
-# Uses Vercel serverless routes under /api/admin (no separate Express server required)
-```
-
 ## Configure Sanity
 Create `.env`:
 ```ini
@@ -43,17 +38,6 @@ SUPABASE_PASSWORD_SETUP_REDIRECT=https://your-domain.com/reset-password
 SUPABASE_SITE_URL=https://your-domain.com
 
 SANITY_API_VERSION=2024-06-01
-
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=change_me_or_use_hash
-ADMIN_PASSWORD_HASH=
-ADMIN_JWT_SECRET=replace_with_strong_secret
-ADMIN_JWT_EXPIRES_IN=8h
-
-WORKER_API_BASE_URL=https://lecture-video-manager.<subdomain>.workers.dev
-WORKER_AUTH_KEY_SECRET=replace_with_worker_secret
-
-VITE_ADMIN_API_BASE_URL=/api/admin
 ```
 Allow CORS origins in Sanity (localhost:5173 and your production domain).
 
@@ -77,41 +61,6 @@ Use this Worker to upload and manage lecture videos (including large files), the
 Deployment and endpoint usage are documented in:
 
 - `workers/lecture-video-manager/README.md`
-
-## Lecture Video Admin Dashboard
-Admin routes are available in this app:
-
-- `/login`
-- `/admin`
-- `/admin/upload`
-- `/admin/videos`
-- `/admin/lectures`
-
-Architecture:
-
-- Frontend admin pages in `src/admin`
-- Backend admin API in `api/admin`
-- Cloudflare Worker as protected R2 gateway
-- Sanity used for lecture `videoKey` mapping
-
-Security model:
-
-- Frontend never uses Worker auth secret directly
-- Admin API attaches `X-Custom-Auth-Key` to Worker requests
-- Admin API protects all `/api/admin/*` routes with JWT
-
-Required env variables for admin backend:
-
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH`
-- `ADMIN_JWT_SECRET`
-- `ADMIN_JWT_EXPIRES_IN` (optional, default `8h`)
-- `WORKER_API_BASE_URL`
-- `WORKER_AUTH_KEY_SECRET`
-
-Required env for admin frontend:
-
-- `VITE_ADMIN_API_BASE_URL`
 
 ## Pages
 - `/` Home (featured + latest blogs/news)

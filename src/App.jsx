@@ -16,18 +16,10 @@ import PaymentSuccess from './pages/PaymentSuccess.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import NotFound from './pages/NotFound.jsx'
-import ProtectedRoute from './admin/components/ProtectedRoute.jsx'
-import AdminLayout from './admin/components/AdminLayout.jsx'
-import AdminLoginPage from './admin/pages/AdminLoginPage.jsx'
-import AdminDashboardPage from './admin/pages/AdminDashboardPage.jsx'
-import UploadPage from './admin/pages/UploadPage.jsx'
-import VideosPage from './admin/pages/VideosPage.jsx'
-import LectureMappingPage from './admin/pages/LectureMappingPage.jsx'
 import {trackPageView} from './utils/metaPixel'
 
 export default function App() {
   const location = useLocation()
-  const isAdminShell = location.pathname.startsWith('/login') || location.pathname.startsWith('/admin')
 
   useEffect(() => {
     trackPageView(`${location.pathname}${location.search}`)
@@ -35,18 +27,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-slate-800">
-      {!isAdminShell ? <Header /> : null}
+      <Header />
       <main className="flex-1">
         <Routes>
-          <Route path="/login" element={<AdminLoginPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/admin/upload" element={<UploadPage />} />
-              <Route path="/admin/videos" element={<VideosPage />} />
-              <Route path="/admin/lectures" element={<LectureMappingPage />} />
-            </Route>
-          </Route>
           <Route path="/" element={<Home />} />
           <Route path="/programs" element={<Programs />} />
           <Route path="/blogs" element={<BlogList />} />
@@ -63,7 +46,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      {!isAdminShell ? <Footer /> : null}
+      <Footer />
     </div>
   )
 }
