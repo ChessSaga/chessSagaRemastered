@@ -31,3 +31,6 @@ Thumbs.db
 
 .vercel
 .env*.local
+
+# Cloudflare Wrangler local state/cache
+**/.wrangler/

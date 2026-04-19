@@ -1,0 +1,1 @@
+export const ACTIVE_COURSES_QUERY = "*[_type == 'course' && isActive == true] | order(sortOrder asc, _createdAt desc){_id, title, slug, price, currency, description, benefits, duration, sessions}"

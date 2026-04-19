@@ -1,217 +1,342 @@
-import { useEffect, useState } from 'react'
-import { Helmet } from 'react-helmet-async'
-import { Link } from 'react-router-dom'
-import { client, urlForImage } from '../sanity'
-import BlogCard from '../components/BlogCard'
-import NewsCard from '../components/NewsCard'
+import {useEffect, useMemo, useState} from 'react'
+import {Helmet} from 'react-helmet-async'
+import {Link} from 'react-router-dom'
+import Hero from '../components/Hero'
+import ProgramCard from '../components/ProgramCard'
+import FAQAccordion from '../components/FAQAccordion'
+import {client} from '../sanity'
+import {ACTIVE_COURSES_QUERY} from '../lib/courseQueries'
+
+const programs = [
+  {
+    title: 'Beginner Program',
+    bullets: ['Learn rules', 'Board vision', 'Fun interactive sessions'],
+    cta: {text: 'Explore Beginner', href: '/programs?level=beginner'},
+    icon: '♙',
+  },
+  {
+    title: 'Intermediate Program',
+    bullets: ['Tactical patterns', 'Positional understanding', 'Opening systems'],
+    cta: {text: 'Explore Intermediate', href: '/programs?level=intermediate'},
+    icon: '♘',
+  },
+  {
+    title: 'Advanced Program',
+    bullets: ['Advanced strategy', 'Opening preparation', 'Endgame mastery'],
+    cta: {text: 'Explore Advanced', href: '/programs?level=advanced'},
+    icon: '♗',
+  },
+]
+
+const reasons = [
+  'Coaches who are FIDE-rated competitive players',
+  'Structured learning path, not random lessons',
+  'Small batches for personal attention',
+  'Focus on thinking skills and discipline',
+  'Regular progress tracking and feedback',
+  'Tournament guidance and preparation',
+]
+
+const qualities = [
+  {title: 'Expert Coaching', subtitle: 'FIDE-rated mentors with proven results'},
+  {title: 'Structured Curriculum', subtitle: 'Level-based roadmap from basics to mastery'},
+  {title: 'Personal Attention', subtitle: 'Small batches with focused individual feedback'},
+  {title: 'Tournament Readiness', subtitle: 'Practical preparation for competitive success'},
+]
+
+const testimonials = [
+  {
+    quote: 'My son improved his chess skills a lot after joining these classes. He now thinks much more calmly during tournaments.',
+    author: 'Neha Sharma, Parent',
+  },
+  {
+    quote: 'We saw a clear improvement in rating and confidence within a few months. The structured lessons made a big difference.',
+    author: 'Rohit Verma, Parent',
+  },
+  {
+    quote: 'My daughter used to get nervous in competitive games, but now she plays with confidence and better planning.',
+    author: 'Priya Nair, Parent',
+  },
+  {
+    quote: 'The coaches give individual attention and regular feedback. We can actually track progress month by month.',
+    author: 'Amit Kulkarni, Parent',
+  },
+  {
+    quote: 'Classes are engaging and disciplined. My child has become more focused, not just in chess but in studies too.',
+    author: 'Sonal Gupta, Parent',
+  },
+  {
+    quote: 'Excellent guidance for tournaments and openings. My son gained confidence and improved his game significantly.',
+    author: 'Karthik Reddy, Parent',
+  },
+]
+
+const faqs = [
+  {
+    question: 'How does the free trial class work?',
+    answer: 'Book a slot, join online, and our coach will assess your child level and suggest the right batch.',
+  },
+  {
+    question: 'Do you provide tournament guidance?',
+    answer: 'Yes. We help with preparation, game reviews, and tournament planning based on level.',
+  },
+  {
+    question: 'Is this suitable for complete beginners?',
+    answer: 'Absolutely. We have beginner-friendly sessions focused on fundamentals and confidence.',
+  },
+]
 
 export default function Home() {
-  const [featured, setFeatured] = useState(null)
-  const [blogs, setBlogs] = useState([])
-  const [news, setNews] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [isReady, setIsReady] = useState(false)
+  const [courses, setCourses] = useState([])
 
   useEffect(() => {
-    let isMounted = true
-    async function fetchData() {
-      try {
-        const [featuredRes, blogsRes, newsRes] = await Promise.all([
-          client.fetch("*[_type=='blog' && featured==true]|order(publishedAt desc)[0]{title, slug, image{asset}, content, publishedAt}"),
-          client.fetch("*[_type=='blog']|order(publishedAt desc)[0..5]{title, slug, image{asset}, content, publishedAt}"),
-          client.fetch("*[_type=='news']|order(publishedAt desc)[0..5]{title, slug, image{asset}, publishedAt}")
-        ])
-        if (!isMounted) return
-        setFeatured(featuredRes || null)
-        setBlogs(blogsRes || [])
-        setNews(newsRes || [])
-      } catch (e) {
-        setError('Failed to load content. Please try again later.')
-      } finally {
-        setLoading(false)
-      }
+    let active = true
+
+    client
+      .fetch(ACTIVE_COURSES_QUERY)
+      .then((result) => {
+        if (!active) return
+        setCourses(result || [])
+      })
+      .catch(() => {
+        if (!active) return
+        setCourses([])
+      })
+
+    return () => {
+      active = false
     }
-    fetchData()
-    // Microinteraction: reveal content after a tiny delay for smoothness
-    const t = setTimeout(() => setIsReady(true), 80)
-    return () => { isMounted = false; clearTimeout(t) }
   }, [])
 
-  // Extract plain text from Portable Text arrays for safe excerpts
-  const extractPlainText = (ptValue) => {
-    if (!ptValue) return ''
-    if (Array.isArray(ptValue)) {
-      for (const block of ptValue) {
-        if (block?._type === 'block' && Array.isArray(block.children)) {
-          const text = block.children.map((x) => x.text || '').join(' ').trim()
-          if (text) return text
-        }
-      }
-      return ptValue
-        .map((b) => (Array.isArray(b?.children) ? b.children.map((x) => x.text || '').join(' ') : ''))
-        .join(' ')
-        .trim()
-    }
-    return typeof ptValue === 'string' ? ptValue : ''
-  }
+  const pricingCards = useMemo(() => {
+    const realCards = courses.slice(0, 3).map((course, index) => ({
+      type: 'course',
+      key: course._id,
+      title: course.title,
+      bullets: (course.benefits && course.benefits.length > 0
+        ? course.benefits
+        : ['Coach guidance', 'Practice assignments', 'Progress tracking']).slice(0, 3),
+      featured: index === 1,
+      courseSlug: course.slug?.current,
+      ctaText: 'Continue to Enroll',
+    }))
+
+    const fallbackTemplates = [
+      {
+        type: 'info',
+        key: 'fallback-explore',
+        title: 'Explore All Active Plans',
+        description: 'See every current course with live pricing and full details on the Enroll page.',
+        ctaText: 'View All Plans',
+        href: '/enroll',
+      },
+      {
+        type: 'info',
+        key: 'fallback-guidance',
+        title: 'Need Help Choosing?',
+        description: 'Book a free trial first and we will recommend the best-fit course based on level.',
+        ctaText: 'Book Free Trial',
+        href: '/trial',
+      },
+      {
+        type: 'info',
+        key: 'fallback-contact',
+        title: 'Custom Learning Support',
+        description: 'If you need a custom plan, contact us and our team will guide your enrollment.',
+        ctaText: 'Contact Us',
+        href: '/contact',
+      },
+    ]
+
+    return [...realCards, ...fallbackTemplates].slice(0, 3)
+  }, [courses])
 
   return (
-    <div className="bg-white">
+    <main>
       <Helmet>
-        <title>Chesssaga — Learn Chess with Blogs and News</title>
-        <meta name="description" content="Chesssaga is a modern, blue & white, light-themed chess platform featuring blogs, news, and learning content. Stay updated and improve your chess." />
+        <title>Chess Saga - Online Chess Coaching for Kids | Free Trial</title>
+        <meta
+          name="description"
+          content="Structured online chess coaching for ages 5-18. FIDE-rated coaches, trial class available. Improve focus, strategy, and competitive play."
+        />
       </Helmet>
 
-      {/* HERO SECTION */}
-      <section className={`relative overflow-hidden transition-opacity duration-500 ${isReady ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="absolute inset-0 bg-gradient-to-b from-[#eff6ff] to-white" aria-hidden="true" />
-        <div className="relative max-w-7xl mx-auto px-4 py-16 sm:py-24">
-          <div className="grid grid-cols-1 md:grid-cols-2 items-center gap-8">
-            <div>
-              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[#0f172a]">
-                Learn chess with <span className="text-[#2563eb]">Chesssaga</span>
-              </h1>
-              <p className="mt-4 text-lg sm:text-xl text-[#64748b] max-w-prose">
-                Clean, modern articles and timely news for players who want a premium, distraction-free learning experience.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="https://g0j57ln408w.typeform.com/to/ystIIaXU?typeform-source=admin.typeform.com" className="inline-flex items-center rounded-lg bg-[#2563eb] px-6 py-3 text-white shadow-sm hover:shadow-md hover:bg-blue-600 transition-transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2563eb]">
-                  Book a Demo
-                </Link>
-                <Link to="/blogs" className="inline-flex items-center rounded-lg bg-[#eff6ff] px-6 py-3 text-[#0f172a] shadow-sm hover:shadow-md hover:bg-blue-100 transition-transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2563eb]]">
-                  Explore Blogs
-                </Link>
-              </div>
-            </div>
-            <div className="hidden md:block">
-              <img src="/icons/Chess Saga Logo.png" alt="Chesssaga logo knight icon" className="w-full max-w-md ml-auto rounded-xl shadow-sm border border-slate-200 transform transition duration-500 ease-out ${isReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}" loading="lazy" />
-            </div>
+      <Hero
+        headline="Train Your Child to Think Like a Champion"
+        subtext="Structured online chess coaching for ages 5-18, led by FIDE-rated players. Build focus, strategy, and real competitive skill from home."
+        primaryCta={{text: 'Book Free Trial Class', href: '/trial'}}
+        secondaryCta={{text: 'Explore Programs', href: '/programs'}}
+        imageSrc="/icons/Chess Saga Logo.png"
+        imageAlt="Chess board themed visual for Chess Saga coaching"
+      />
+
+      <section className="mx-auto mt-4 w-full max-w-7xl px-4 sm:px-6">
+        <div className="rounded-2xl bg-[var(--color-primary)] px-5 py-4 text-sm font-medium text-blue-50">
+          <p>Trusted by 2,000+ Students Across 12 Countries</p>
+          <div className="mt-2 grid gap-2 text-xs text-blue-100 sm:grid-cols-2 lg:grid-cols-4">
+            <span>FIDE-Rated Professional Coaches</span>
+            <span>Structured Curriculum</span>
+            <span>Tournament Pathway</span>
+            <span>Real Rating Improvement</span>
           </div>
         </div>
       </section>
 
-      {/* FEATURED BLOG */}
-      <section className={`bg-[#eff6ff] transition-transform duration-500 ${isReady ? 'translate-y-0' : 'translate-y-1'}`}>
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-[#0f172a] mb-6">Featured Blog</h2>
-          {loading ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-[#64748b]">Loading featured blog...</div>
-          ) : error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">{error}</div>
-          ) : featured ? (
-            <Link to={`/blogs/${featured.slug?.current}`} className="block">
-              <article className="grid grid-cols-1 md:grid-cols-3 gap-6 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden will-change-transform transition duration-300 hover:shadow-md">
-                {featured.image?.asset && (
-                  <img
-                    src={urlForImage(featured.image.asset)}
-                    alt={featured.title}
-                    className="w-full h-64 md:h-full object-cover"
-                    loading="lazy"
-                  />
-                )}
-                <div className="p-6 md:col-span-2">
-                  <h3 className="text-xl sm:text-2xl font-semibold tracking-tight text-[#0f172a]">{featured.title}</h3>
-                  <p className="text-xs text-[#64748b] mt-1">
-                    {featured.publishedAt ? new Date(featured.publishedAt).toLocaleDateString() : ''}
-                  </p>
-                  <p className="mt-4 text-[#64748b] leading-7 line-clamp-4">
-                    {(() => {
-                      const txt = extractPlainText(featured.content)
-                      return txt ? `${txt.slice(0, 240)}${txt.length > 240 ? '…' : ''}` : ''
-                    })()}
-                  </p>
-                  <div className="mt-5 inline-flex items-center rounded-lg bg-[#2563eb] px-5 py-2.5 text-white shadow-sm hover:shadow-md hover:bg-blue-600 transition-transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2563eb]">
-                    Read Article
-                  </div>
-                </div>
+      <section className="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6">
+        <div className="mb-6 flex items-end justify-between">
+          <h2 className="text-2xl font-bold text-[var(--color-primary)] sm:text-3xl">
+            Programs Designed for Every Stage of Your Child's Chess Journey
+          </h2>
+          <Link to="/programs" className="hidden text-sm font-semibold text-[var(--color-accent)] hover:underline sm:inline">
+            View All Programs
+          </Link>
+        </div>
+
+        <div className="grid snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid-cols-2 lg:grid-cols-3">
+          {programs.map((item) => (
+            <div key={item.title} className="min-w-[280px] snap-center sm:min-w-0">
+              <ProgramCard title={item.title} bullets={item.bullets} cta={item.cta} icon={item.icon} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6">
+        <h2 className="text-2xl font-bold text-[var(--color-primary)] sm:text-3xl">More Than Just Chess Classes</h2>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {reasons.map((reason) => (
+            <article key={reason} className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
+              <p>{reason}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6">
+        <h2 className="text-2xl font-bold text-[var(--color-primary)] sm:text-3xl">Getting Started Is Simple</h2>
+        <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            'Book a free trial class',
+            "Get your child's level assessed",
+            'Join the right coaching batch',
+            'Track improvement with monthly reports',
+          ].map((step, index) => (
+            <article key={step} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold uppercase text-[var(--color-accent)]">Step {index + 1}</p>
+              <p className="mt-2 text-sm font-medium text-slate-800">{step}</p>
+            </article>
+          ))}
+        </div>
+        <Link
+          to="/trial"
+          className="mt-6 inline-flex rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white"
+        >
+          Start Free Trial
+        </Link>
+      </section>
+
+      <section className="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6">
+        <h2 className="text-2xl font-bold text-[var(--color-primary)] sm:text-3xl">Why Choose Chess Saga?</h2>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {qualities.map((quality) => (
+            <article key={quality.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-[var(--color-primary)]" aria-hidden="true">
+                {quality.title.split(' ').slice(0, 2).map((part) => part[0]).join('')}
+              </div>
+              <h3 className="mt-4 text-center text-base font-semibold text-slate-900">{quality.title}</h3>
+              <p className="text-center text-sm text-slate-500">{quality.subtitle}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6">
+        <h2 className="text-2xl font-bold text-[var(--color-primary)] sm:text-3xl">Flexible Enrollment Plans</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Live preview from our enrollment catalog. Exact pricing and final course details are shown on Enroll.
+        </p>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {pricingCards.map((card) =>
+            card.type === 'course' ? (
+              <article
+                key={card.key}
+                className={`rounded-2xl border p-6 shadow-sm ${
+                  card.featured
+                    ? 'border-[var(--color-accent)] bg-blue-50/50 shadow-lg shadow-blue-900/10'
+                    : 'border-slate-200 bg-white'
+                }`}
+              >
+                {card.featured ? (
+                  <span className="rounded-full bg-[var(--color-accent)] px-3 py-1 text-xs font-semibold text-white">
+                    Most Popular
+                  </span>
+                ) : null}
+                <h3 className="mt-3 text-xl font-semibold text-slate-900">{card.title}</h3>
+                <p className="mt-2 text-sm text-slate-600">View complete pricing and plan breakdown on Enroll.</p>
+                <ul className="mt-4 space-y-2 text-sm text-slate-600">
+                  {card.bullets.map((point) => (
+                    <li key={point} className="flex items-start gap-2">
+                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--color-accent-2)]" aria-hidden="true" />
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to={card.courseSlug ? `/enroll?course=${card.courseSlug}` : '/enroll'}
+                  className="mt-6 inline-flex rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#082f58]"
+                >
+                  View Details & Price
+                </Link>
               </article>
-            </Link>
-          ) : (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-[#64748b]">No featured blog yet.</div>
+            ) : (
+              <article key={card.key} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-xl font-semibold text-slate-900">{card.title}</h3>
+                <p className="mt-3 text-sm text-slate-600">{card.description}</p>
+                <Link
+                  to={card.href}
+                  className="mt-6 inline-flex rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#082f58]"
+                >
+                  {card.ctaText}
+                </Link>
+              </article>
+            )
           )}
         </div>
       </section>
 
-      {/* LATEST BLOGS GRID */}
-      <section className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-[#0f172a]">Latest Blogs</h2>
-          <Link to="/blogs" className="text-[#2563eb] hover:underline">View all</Link>
+      <section className="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6">
+        <h2 className="text-2xl font-bold text-[var(--color-primary)] sm:text-3xl">Results That Speak</h2>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {testimonials.map((item) => (
+            <article key={item.author} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm leading-7 text-slate-700">"{item.quote}"</p>
+              <p className="mt-3 text-sm font-semibold text-slate-900">{item.author}</p>
+            </article>
+          ))}
         </div>
-        {loading ? (
-          <p className="text-[#64748b]">Loading blogs...</p>
-        ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">{error}</div>
-        ) : blogs?.length ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {blogs.map((post) => (
-              <Link
-                key={post.slug?.current}
-                to={`/blogs/${post.slug?.current}`}
-                className="transition-transform duration-200 will-change-transform hover:-translate-y-0.5 block focus:outline-none focus:ring-2 focus:ring-[#2563eb]"
-                aria-label={post.title}
-              >
-                <BlogCard post={post} />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-slate-200 bg-[#eff6ff] p-6 text-[#64748b]">No blogs available.</div>
-        )}
+        <Link to="/programs" className="mt-4 inline-flex text-sm font-semibold text-[var(--color-accent)] hover:underline">
+          See Student Results
+        </Link>
       </section>
 
-      {/* LATEST NEWS SECTION */}
-      <section className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="text-2xl sm:text-3xl font-semibold text-[#0f172a]">Latest News</h2>
-          <Link to="/news" className="text-[#2563eb] hover:underline">View all</Link>
-        </div>
-        {loading ? (
-          <p className="text-[#64748b]">Loading news...</p>
-        ) : error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">{error}</div>
-        ) : news?.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {news.map((item) => (
-              <Link
-                key={item.slug?.current}
-                to={`/news/${item.slug?.current}`}
-                className="transition-transform duration-200 will-change-transform hover:-translate-y-0.5 block focus:outline-none focus:ring-2 focus:ring-[#2563eb]"
-                aria-label={item.title}
-              >
-                <NewsCard item={item} />
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-slate-200 bg-[#eff6ff] p-6 text-[#64748b]">No news available.</div>
-        )}
-      </section>
-
-
-      {/* ABOUT PREVIEW */}
-      <section className="max-w-7xl mx-auto px-4 py-12">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
-          <h3 className="text-xl font-semibold text-[#0f172a]">About Chesssaga</h3>
-          <p className="text-[#64748b] mt-2 leading-7 max-w-prose">
-            Chesssaga exists to provide a premium, clean reading experience for players who want to learn efficiently. We curate practical advice, strategy breakdowns, and timely news—all in a modern blue & white design built for focus.
-          </p>
+      <section className="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6">
+        <h2 className="text-2xl font-bold text-[var(--color-primary)] sm:text-3xl">Frequently Asked Questions</h2>
+        <div className="mt-5 max-w-3xl">
+          <FAQAccordion items={faqs} />
         </div>
       </section>
 
-      {/* NEWSLETTER SIGNUP */}
-      <section className="bg-[#eff6ff]">
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <form action="https://formsubmit.co/your@email.com" method="POST" className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row gap-3">
-            <input type="hidden" name="_subject" value="Chesssaga Newsletter Signup" />
-            <input type="hidden" name="_captcha" value="false" />
-            <label htmlFor="email" className="sr-only">Email</label>
-            <input id="email" name="email" type="email" required placeholder="Enter your email" className="flex-1 rounded-lg border border-slate-300 px-4 py-3 text-[#0f172a] placeholder-[#64748b] focus:outline-none focus:ring-2 focus:ring-[#2563eb]" />
-            <button type="submit" className="rounded-lg bg-[#2563eb] px-6 py-3 text-white shadow-sm hover:shadow-md hover:bg-blue-600">Subscribe</button>
-          </form>
+      <section className="mx-auto mt-16 w-full max-w-7xl px-4 pb-10 sm:px-6">
+        <div className="rounded-3xl bg-[var(--color-primary)] px-6 py-10 text-center text-white">
+          <h2 className="text-3xl font-bold">Give Your Child a Thinking Advantage That Lasts for Life</h2>
+          <Link
+            to="/trial"
+            className="mt-6 inline-flex rounded-xl bg-[var(--color-accent-2)] px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-black/20"
+          >
+            Book Free Trial Class
+          </Link>
         </div>
       </section>
-    </div>
+    </main>
   )
 }

@@ -1,7 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base typography and layout */
-html, body, #root { height: 100%; }
-body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif; }
+:root {
+	--color-primary: #0B3B6F;
+	--color-accent: #1976D2;
+	--color-accent-2: #FFB300;
+	--color-muted: #6B7280;
+	--color-bg: #F8FAFC;
+	--color-card: #ffffff;
+}
+
+html {
+	font-size: 14.5px;
+}
+
+html,
+body,
+#root {
+	height: 100%;
+}
+
+body {
+	font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	background: radial-gradient(circle at 15% -10%, #dbeafe 0%, rgba(219, 234, 254, 0) 40%),
+		radial-gradient(circle at 90% 0%, #e0f2fe 0%, rgba(224, 242, 254, 0) 35%),
+		var(--color-bg);
+	color: #0f172a;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@keyframes fade-slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(18px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animate-fade-slide-up {
+	animation: fade-slide-up 500ms ease-out both;
+}

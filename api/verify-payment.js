@@ -1,6 +1,10 @@
 import crypto from 'crypto'
+import Razorpay from 'razorpay'
 import {allowMethods, parseJsonBody, sendJson, setCorsHeaders} from './_lib/http.js'
 import {sanityServerClient} from './_lib/sanity.js'
+import {provisionSupabaseUserAndSendPasswordSetup} from './_lib/supabaseProvisioning.js'
+
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function isValidSignature(orderId, paymentId, signature, secret) {
   const generated = crypto
@@ -9,6 +13,35 @@ function isValidSignature(orderId, paymentId, signature, secret) {
     .digest('hex')
 
   return generated === signature
+}
+
+async function resolveBuyerEmail({providedEmail, paymentId, orderId}) {
+  const normalized = String(providedEmail || '').trim().toLowerCase()
+  if (!emailRegex.test(normalized)) {
+    throw new Error('A valid buyerEmail is required for verification')
+  }
+
+  const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_SECRET_KEY,
+  })
+
+  const payment = await razorpay.payments.fetch(paymentId)
+  const paymentEmail = String(payment?.email || payment?.notes?.buyerEmail || '').trim().toLowerCase()
+  if (emailRegex.test(paymentEmail) && paymentEmail !== normalized) {
+    throw new Error('Email mismatch between form and payment details. Please use the same email for checkout.')
+  }
+
+  const derivedOrderId = String(payment?.order_id || orderId || '').trim()
+  if (derivedOrderId) {
+    const order = await razorpay.orders.fetch(derivedOrderId)
+    const orderEmail = String(order?.notes?.buyerEmail || '').trim().toLowerCase()
+    if (emailRegex.test(orderEmail) && orderEmail !== normalized) {
+      throw new Error('Email mismatch between form and order details. Please use the same email for checkout.')
+    }
+  }
+
+  return normalized
 }
 
 export default async function handler(req, res) {
@@ -23,6 +56,7 @@ export default async function handler(req, res) {
       courseId,
       buyerName = '',
       buyerWhatsApp = '',
+      buyerEmail = '',
     } = await parseJsonBody(req)
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !courseId) {
@@ -46,16 +80,25 @@ export default async function handler(req, res) {
       })
     }
 
+    const normalizedEmail = await resolveBuyerEmail({
+      providedEmail: buyerEmail,
+      paymentId: razorpayPaymentId,
+      orderId: razorpayOrderId,
+    })
+
     const existing = await sanityServerClient.fetch(
       "*[_type == 'purchase' && razorpayPaymentId == $paymentId][0]{_id}",
       {paymentId: razorpayPaymentId}
     )
 
     if (existing?._id) {
+      const onboarding = await provisionSupabaseUserAndSendPasswordSetup(normalizedEmail)
+
       return sendJson(res, 200, {
         success: true,
         verified: true,
         purchaseId: existing._id,
+        onboarding,
       })
     }
 
@@ -78,19 +121,23 @@ export default async function handler(req, res) {
       course: {_type: 'reference', _ref: course._id},
       buyerName: String(buyerName).trim().slice(0, 100),
       buyerWhatsApp: String(buyerWhatsApp).trim().slice(0, 20),
+      buyerEmail: normalizedEmail,
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
       amount,
       currency: course.currency || 'INR',
-      status: 'verified',
+      status: 'success',
       verifiedAt: new Date().toISOString(),
     })
+
+    const onboarding = await provisionSupabaseUserAndSendPasswordSetup(normalizedEmail)
 
     return sendJson(res, 200, {
       success: true,
       verified: true,
       purchaseId: doc._id,
+      onboarding,
     })
   } catch (error) {
     return sendJson(res, 500, {

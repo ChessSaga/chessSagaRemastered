@@ -13,6 +13,12 @@ export default {
     {name: 'buyerName', title: 'Buyer Name', type: 'string'},
     {name: 'buyerWhatsApp', title: 'Buyer WhatsApp', type: 'string'},
     {
+      name: 'buyerEmail',
+      title: 'Buyer Email',
+      type: 'string',
+      validation: (Rule) => Rule.required().email(),
+    },
+    {
       name: 'razorpayOrderId',
       title: 'Razorpay Order ID',
       type: 'string',
@@ -41,7 +47,7 @@ export default {
       name: 'status',
       title: 'Status',
       type: 'string',
-      options: {list: ['verified', 'failed']},
+      options: {list: ['success', 'verified', 'failed']},
       validation: (Rule) => Rule.required(),
     },
     {

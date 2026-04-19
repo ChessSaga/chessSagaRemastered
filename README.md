@@ -10,11 +10,50 @@ npm install
 npm run dev
 ```
 
+Run the admin backend API in another terminal:
+```powershell
+# Uses Vercel serverless routes under /api/admin (no separate Express server required)
+```
+
 ## Configure Sanity
 Create `.env`:
 ```ini
 VITE_SANITY_PROJECT_ID=your_project_id
 VITE_SANITY_DATASET=production
+
+# Server-side (Vercel Functions)
+SANITY_PROJECT_ID=your_project_id
+SANITY_DATASET=production
+SANITY_API_WRITE_TOKEN=your_sanity_token
+
+RAZORPAY_KEY_ID=your_razorpay_key
+RAZORPAY_SECRET_KEY=your_razorpay_secret
+
+R2_ACCESS_KEY_ID=your_r2_access_key
+R2_SECRET_ACCESS_KEY=your_r2_secret_key
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+R2_BUCKET_NAME=chess-saga-videos
+
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+SUPABASE_PASSWORD_SETUP_REDIRECT=https://your-domain.com/reset-password
+SUPABASE_SITE_URL=https://your-domain.com
+
+SANITY_API_VERSION=2024-06-01
+
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=change_me_or_use_hash
+ADMIN_PASSWORD_HASH=
+ADMIN_JWT_SECRET=replace_with_strong_secret
+ADMIN_JWT_EXPIRES_IN=8h
+
+WORKER_API_BASE_URL=https://lecture-video-manager.<subdomain>.workers.dev
+WORKER_AUTH_KEY_SECRET=replace_with_worker_secret
+
+VITE_ADMIN_API_BASE_URL=/api/admin
 ```
 Allow CORS origins in Sanity (localhost:5173 and your production domain).
 
@@ -28,12 +67,63 @@ RewriteEngine On
 RewriteRule ^ index.html [L]
 ```
 
+## Large Video Uploads (R2 Worker)
+Cloudflare dashboard uploads can be limiting for large video files. This repo now includes a dedicated Worker for authenticated R2 video management and multipart uploads:
+
+- `workers/lecture-video-manager/`
+
+Use this Worker to upload and manage lecture videos (including large files), then store the uploaded object key in Sanity `lecture.videoKey`.
+
+Deployment and endpoint usage are documented in:
+
+- `workers/lecture-video-manager/README.md`
+
+## Lecture Video Admin Dashboard
+Admin routes are available in this app:
+
+- `/login`
+- `/admin`
+- `/admin/upload`
+- `/admin/videos`
+- `/admin/lectures`
+
+Architecture:
+
+- Frontend admin pages in `src/admin`
+- Backend admin API in `api/admin`
+- Cloudflare Worker as protected R2 gateway
+- Sanity used for lecture `videoKey` mapping
+
+Security model:
+
+- Frontend never uses Worker auth secret directly
+- Admin API attaches `X-Custom-Auth-Key` to Worker requests
+- Admin API protects all `/api/admin/*` routes with JWT
+
+Required env variables for admin backend:
+
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH`
+- `ADMIN_JWT_SECRET`
+- `ADMIN_JWT_EXPIRES_IN` (optional, default `8h`)
+- `WORKER_API_BASE_URL`
+- `WORKER_AUTH_KEY_SECRET`
+
+Required env for admin frontend:
+
+- `VITE_ADMIN_API_BASE_URL`
+
 ## Pages
 - `/` Home (featured + latest blogs/news)
 - `/blogs`, `/blogs/:slug` (Portable Text, TOC, author, share)
 - `/news`, `/news/:slug` (Portable Text, TOC, author, share)
 - `/about` (founder card + rich content)
-- `/contact` (gradient hero + FormSubmit form)
+- `/programs` active program catalog
+- `/trial` trial booking form (serverless lead capture)
+- `/enroll` payment checkout with Razorpay
+- `/dashboard` learner login + secure course playback
+- `/reset-password` Supabase recovery/password setup
+- `/contact` contact lead form (serverless lead capture)
 
 ## Development Notes
 - Client-only Sanity access via `@sanity/client` + GROQ

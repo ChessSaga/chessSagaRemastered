@@ -2,6 +2,8 @@ import Razorpay from 'razorpay'
 import {allowMethods, parseJsonBody, sendJson, setCorsHeaders} from './_lib/http.js'
 import {sanityServerClient} from './_lib/sanity.js'
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export default async function handler(req, res) {
   if (setCorsHeaders(req, res)) return
   if (!allowMethods(req, res, ['POST'])) return
@@ -15,10 +17,15 @@ export default async function handler(req, res) {
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_SECRET_KEY,
     })
-    const {courseId, buyerName = '', buyerWhatsApp = ''} = await parseJsonBody(req)
+    const {courseId, buyerName = '', buyerWhatsApp = '', buyerEmail = ''} = await parseJsonBody(req)
 
     if (!courseId) {
       return sendJson(res, 400, {success: false, error: 'courseId is required'})
+    }
+
+    const normalizedEmail = String(buyerEmail).trim().toLowerCase()
+    if (!emailRegex.test(normalizedEmail)) {
+      return sendJson(res, 400, {success: false, error: 'A valid buyerEmail is required'})
     }
 
     const course = await sanityServerClient.fetch(
@@ -44,6 +51,7 @@ export default async function handler(req, res) {
         courseTitle: course.title,
         buyerName: String(buyerName).slice(0, 100),
         buyerWhatsApp: String(buyerWhatsApp).slice(0, 20),
+        buyerEmail: normalizedEmail,
       },
     })
 

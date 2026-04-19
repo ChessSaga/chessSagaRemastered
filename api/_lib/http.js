@@ -32,8 +32,8 @@ export async function parseJsonBody(req) {
 export function setCorsHeaders(req, res) {
   const allowedOrigin = process.env.CORS_ALLOW_ORIGIN || '*'
   res.setHeader('Access-Control-Allow-Origin', allowedOrigin)
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Custom-Auth-Key')
 
   if (req.method === 'OPTIONS') {
     res.status(204).end()

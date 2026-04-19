@@ -9,14 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1030.0",
+    "@aws-sdk/s3-request-presigner": "^3.1030.0",
     "@portabletext/react": "^5.0.0",
     "@sanity/client": "^6.7.2",
+    "@supabase/supabase-js": "^2.103.1",
+    "axios": "^1.11.0",
+    "bcryptjs": "^3.0.2",
     "groq": "^3.43.1",
+    "jsonwebtoken": "^9.0.2",
+    "razorpay": "^2.9.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-helmet-async": "^2.0.5",
-    "react-router-dom": "^6.28.0",
-    "razorpay": "^2.9.6"
+    "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.3",

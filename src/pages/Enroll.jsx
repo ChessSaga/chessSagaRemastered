@@ -1,7 +1,9 @@
-import {useEffect, useState} from 'react'
+import {useEffect, useMemo, useState} from 'react'
 import {Helmet} from 'react-helmet-async'
-import {useNavigate} from 'react-router-dom'
+import {useNavigate, useSearchParams} from 'react-router-dom'
+import EnrollCard from '../components/EnrollCard'
 import {client} from '../sanity'
+import {ACTIVE_COURSES_QUERY} from '../lib/courseQueries'
 
 async function ensureRazorpayLoaded() {
   if (window.Razorpay) return true
@@ -18,25 +20,35 @@ async function ensureRazorpayLoaded() {
 
 export default function Enroll() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [courses, setCourses] = useState([])
   const [selectedCourseId, setSelectedCourseId] = useState('')
   const [buyerName, setBuyerName] = useState('')
+  const [buyerEmail, setBuyerEmail] = useState('')
   const [buyerWhatsApp, setBuyerWhatsApp] = useState('')
   const [loading, setLoading] = useState(true)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState('')
 
+  const utmValues = useMemo(() => ({
+    utmSource: searchParams.get('utm_source') || '',
+    utmCampaign: searchParams.get('utm_campaign') || '',
+    utmMedium: searchParams.get('utm_medium') || '',
+  }), [searchParams])
+
   useEffect(() => {
     let active = true
 
     client
-      .fetch(
-        "*[_type == 'course' && isActive == true] | order(sortOrder asc, _createdAt desc){_id, title, description, price, currency, ctaLabel}"
-      )
+      .fetch(ACTIVE_COURSES_QUERY)
       .then((result) => {
         if (!active) return
-        setCourses(result || [])
-        setSelectedCourseId(result?.[0]?._id || '')
+        const list = result || []
+        setCourses(list)
+
+        const wantedSlug = searchParams.get('course')
+        const matchedBySlug = list.find((item) => item.slug?.current === wantedSlug)
+        setSelectedCourseId(matchedBySlug?._id || list?.[0]?._id || '')
       })
       .catch(() => {
         if (active) setError('Unable to load courses right now.')
@@ -48,7 +60,10 @@ export default function Enroll() {
     return () => {
       active = false
     }
-  }, [])
+  }, [searchParams])
+
+  const selectedCourse = courses.find((course) => course._id === selectedCourseId) || null
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
   async function startPayment() {
     setError('')
@@ -58,8 +73,15 @@ export default function Enroll() {
       return
     }
 
-    if (!buyerName.trim() || !buyerWhatsApp.trim()) {
-      setError('Please provide your name and WhatsApp number.')
+    const normalizedEmail = buyerEmail.trim().toLowerCase()
+
+    if (!buyerName.trim() || !normalizedEmail || !buyerWhatsApp.trim()) {
+      setError('Please provide your name, email, and WhatsApp number.')
+      return
+    }
+
+    if (!emailRegex.test(normalizedEmail)) {
+      setError('Please provide a valid email address.')
       return
     }
 
@@ -67,15 +89,17 @@ export default function Enroll() {
 
     try {
       const loaded = await ensureRazorpayLoaded()
-      if (!loaded) throw new Error('Unable to load payment gateway. Try again.')
+      if (!loaded) throw new Error('Unable to load payment gateway. Please try again.')
 
       const orderResponse = await fetch('/api/create-order', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           courseId: selectedCourseId,
-          buyerName,
-          buyerWhatsApp,
+          buyerName: buyerName.trim(),
+          buyerEmail: normalizedEmail,
+          buyerWhatsApp: buyerWhatsApp.trim(),
+          ...utmValues,
         }),
       })
 
@@ -88,15 +112,17 @@ export default function Enroll() {
         key: orderData.keyId,
         amount: orderData.order.amount,
         currency: orderData.order.currency,
-        name: 'Chesssaga',
+        name: 'Chess Saga',
         description: orderData.course.title,
         order_id: orderData.order.id,
         prefill: {
           name: buyerName,
+          email: normalizedEmail,
           contact: buyerWhatsApp,
         },
         notes: {
           courseId: selectedCourseId,
+          ...utmValues,
         },
         handler: async (response) => {
           try {
@@ -106,8 +132,10 @@ export default function Enroll() {
               body: JSON.stringify({
                 ...response,
                 courseId: selectedCourseId,
-                buyerName,
-                buyerWhatsApp,
+                buyerName: buyerName.trim(),
+                buyerEmail: normalizedEmail,
+                buyerWhatsApp: buyerWhatsApp.trim(),
+                ...utmValues,
               }),
             })
 
@@ -116,12 +144,20 @@ export default function Enroll() {
               throw new Error(verifyData.error || 'Payment verification failed')
             }
 
-            navigate('/payment-success', {
+            const recoveryLink = verifyData?.onboarding?.recoveryLink || ''
+            if (recoveryLink) {
+              window.location.assign(recoveryLink)
+              return
+            }
+
+            navigate('/reset-password', {
+              replace: true,
               state: {
                 purchaseEvent: {
                   value: Number(orderData.order.amount) / 100,
                   currency: orderData.order.currency,
                   content_name: orderData.course.title,
+                  order_id: orderData.order.id,
                 },
                 purchaseId: verifyData.purchaseId,
               },
@@ -132,12 +168,10 @@ export default function Enroll() {
           }
         },
         modal: {
-          ondismiss: () => {
-            setPaying(false)
-          },
+          ondismiss: () => setPaying(false),
         },
         theme: {
-          color: '#2563eb',
+          color: '#0B3B6F',
         },
       }
 
@@ -154,94 +188,92 @@ export default function Enroll() {
   }
 
   return (
-    <main className="bg-white min-h-[70vh]">
+    <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
       <Helmet>
-        <title>Enroll In Course - Chesssaga</title>
+        <title>Enroll - Chess Saga</title>
         <meta
           name="description"
-          content="Choose a chess program and enroll securely online using Razorpay checkout."
+          content="Purchase the Chess Saga course after trial. Secure payments via Razorpay."
         />
       </Helmet>
 
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#eff6ff] to-white" aria-hidden="true" />
-        <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-8 sm:pt-16 sm:pb-12">
-          <h1 className="text-3xl sm:text-4xl font-bold text-[#0f172a]">Enroll In A Program</h1>
-          <p className="mt-3 text-[#64748b] max-w-2xl">
-            Select your preferred course, complete secure payment, and we will share onboarding details.
-          </p>
-        </div>
-      </section>
+      <header className="mb-8 max-w-3xl animate-fade-slide-up">
+        <p className="text-sm font-semibold uppercase tracking-wide text-[var(--color-accent)]">Enroll</p>
+        <h1 className="mt-2 text-3xl font-bold text-[var(--color-primary)] sm:text-4xl">Choose the right plan and enroll securely</h1>
+        <p className="mt-3 text-slate-600">
+          Complete payment to reserve your batch. Our team will contact you immediately with onboarding steps.
+        </p>
+      </header>
 
-      <section className="max-w-6xl mx-auto px-4 pb-12 grid gap-6 lg:grid-cols-3">
-        <article className="lg:col-span-2 grid gap-4">
+      <section className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <article className="space-y-4">
           {loading ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm animate-pulse h-44" />
-          ) : courses.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-[#64748b]">No active courses are available right now.</p>
+            <div className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+          ) : null}
+
+          {!loading && courses.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-600 shadow-sm">
+              No active courses are available right now.
             </div>
-          ) : (
-            courses.map((course) => {
-              const selected = selectedCourseId === course._id
-              return (
-                <button
-                  key={course._id}
-                  type="button"
-                  onClick={() => setSelectedCourseId(course._id)}
-                  className={`text-left rounded-xl border p-5 shadow-sm transition ${
-                    selected
-                      ? 'border-[#2563eb] bg-[#eff6ff]'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <h2 className="text-xl font-semibold text-[#0f172a]">{course.title}</h2>
-                  <p className="text-[#64748b] mt-2">{course.description}</p>
-                  <p className="mt-3 text-lg font-semibold text-[#0f172a]">
-                    {(course.currency || 'INR')} {course.price}
-                  </p>
-                </button>
-              )
-            })
-          )}
+          ) : null}
+
+          {courses.map((course) => {
+            const selected = course._id === selectedCourseId
+            return (
+              <button
+                key={course._id}
+                type="button"
+                onClick={() => setSelectedCourseId(course._id)}
+                className={`w-full rounded-2xl border p-5 text-left shadow-sm transition ${
+                  selected
+                    ? 'border-[var(--color-accent)] bg-blue-50/60'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900">{course.title}</h2>
+                    <p className="mt-1 text-sm text-slate-600">{course.description || 'Structured learning track for measurable progress.'}</p>
+                  </div>
+                  <p className="text-xl font-bold text-[var(--color-primary)]">INR {course.price}</p>
+                </div>
+
+                <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+                  {(course.benefits || ['Coach guidance', 'Practice assignments', 'Progress tracking']).map((item) => (
+                    <span key={`${course._id}-${item}`} className="rounded-lg bg-white px-3 py-2">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            )
+          })}
         </article>
 
-        <aside className="lg:col-span-1">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-[#0f172a]">Your Details</h3>
-            <div className="grid gap-3 mt-4">
-              <label htmlFor="buyerName" className="sr-only">Name</label>
-              <input
-                id="buyerName"
-                value={buyerName}
-                onChange={(event) => setBuyerName(event.target.value)}
-                className="border border-slate-300 rounded-lg px-4 py-3 text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]"
-                placeholder="Your full name"
-              />
-
-              <label htmlFor="buyerWhatsApp" className="sr-only">WhatsApp Number</label>
-              <input
-                id="buyerWhatsApp"
-                value={buyerWhatsApp}
-                onChange={(event) => setBuyerWhatsApp(event.target.value)}
-                className="border border-slate-300 rounded-lg px-4 py-3 text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]"
-                placeholder="WhatsApp number"
-              />
-
-              {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-              <button
-                type="button"
-                onClick={startPayment}
-                disabled={paying || loading || courses.length === 0}
-                className="rounded-lg bg-[#2563eb] px-6 py-3 text-white shadow-sm hover:shadow-md hover:bg-blue-600 disabled:opacity-70"
-              >
-                {paying ? 'Processing...' : 'Enroll Now'}
-              </button>
-            </div>
-          </div>
-        </aside>
+        <EnrollCard
+          course={selectedCourse}
+          buyerName={buyerName}
+          buyerEmail={buyerEmail}
+          buyerWhatsApp={buyerWhatsApp}
+          setBuyerName={setBuyerName}
+          setBuyerEmail={setBuyerEmail}
+          setBuyerWhatsApp={setBuyerWhatsApp}
+          onEnroll={startPayment}
+          loading={paying || loading}
+          error={error}
+        />
       </section>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur lg:hidden">
+        <button
+          type="button"
+          onClick={startPayment}
+          disabled={paying || loading || !selectedCourse}
+          className="w-full rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-70"
+        >
+          {paying ? 'Processing...' : 'Enroll Now'}
+        </button>
+      </div>
     </main>
   )
 }

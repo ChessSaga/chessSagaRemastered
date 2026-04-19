@@ -1,0 +1,11 @@
+name = "lecture-video-manager"
+main = "src/index.js"
+compatibility_date = "2026-04-15"
+
+[[r2_buckets]]
+binding = "LECTURE_VIDEOS"
+bucket_name = "chess-saga-videos"
+remote = true
+
+[vars]
+ALLOWED_ORIGIN = "*"
