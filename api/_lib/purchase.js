@@ -23,7 +23,7 @@ export async function getPurchasedCoursesByEmail(email) {
   }
 
   const purchases = await sanityServerClient.fetch(
-    `*[_type == 'purchase' && lower(coalesce(buyerEmail, '')) == $email && status in ['success', 'verified'] && defined(course._ref)] | order(verifiedAt desc){
+    `*[_type == 'purchase' && lower(coalesce(buyerEmail, '')) == $email && status in ['success', 'verified'] && defined(course._ref) && course->isActive == true] | order(verifiedAt desc){
       _id,
       'courseId': course._ref,
       'courseTitle': course->title,

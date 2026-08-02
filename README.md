@@ -31,7 +31,7 @@ R2_BUCKET_NAME=chess-saga-videos
 
 VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
-SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_URL=https://<project-ref>.supabase.co  
 SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 SUPABASE_PASSWORD_SETUP_REDIRECT=https://your-domain.com/reset-password
