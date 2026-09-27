@@ -43,7 +43,8 @@ export default async function handler(req, res) {
         title,
         videoKey,
         order,
-        duration
+        duration,
+        checkpoints
       }`,
       {courseId}
     )

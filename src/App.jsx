@@ -20,6 +20,8 @@ import {trackPageView} from './utils/metaPixel'
 
 export default function App() {
   const location = useLocation()
+  // The footer eats vertical space the lesson player needs; keep it on public pages.
+  const hideFooter = location.pathname === '/dashboard'
 
   useEffect(() => {
     trackPageView(`${location.pathname}${location.search}`)
@@ -46,7 +48,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <Footer />
+      {hideFooter ? null : <Footer />}
     </div>
   )
 }

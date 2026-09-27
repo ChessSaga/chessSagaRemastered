@@ -6,7 +6,7 @@ import {getR2BucketName, getR2Client} from './_lib/r2Client.js'
 import {sanityServerClient} from './_lib/sanity.js'
 import {getVerifiedUserByAccessToken} from './_lib/supabaseAuth.js'
 
-const SIGNED_URL_EXPIRY_SECONDS = 300
+const SIGNED_URL_EXPIRY_SECONDS = 3600
 
 export default async function handler(req, res) {
   if (setCorsHeaders(req, res)) return
