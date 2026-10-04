@@ -1,12 +1,12 @@
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {Link, NavLink, useLocation} from 'react-router-dom'
+import {supabase} from '../lib/supabase'
 
 const NAV_LINKS = [
   {to: '/', label: 'Home'},
   {to: '/programs', label: 'Programs'},
   {to: '/trial', label: 'Free Trial'},
   {to: '/enroll', label: 'Enroll'},
-  {to: '/dashboard', label: 'Dashboard'},
   {to: '/contact', label: 'Contact'},
   {to: '/blogs', label: 'Blogs'},
   { to: '/news', label: 'News' },
@@ -15,7 +15,31 @@ const NAV_LINKS = [
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
   const location = useLocation()
+
+  // Drives the auth button's label. onAuthStateChange keeps it correct after a
+  // login or logout without needing a page reload.
+  useEffect(() => {
+    let active = true
+
+    supabase.auth.getSession().then(({data}) => {
+      if (active) setSignedIn(Boolean(data.session?.access_token))
+    })
+
+    const {
+      data: {subscription},
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSignedIn(Boolean(session?.access_token))
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  const authLabel = signedIn ? 'Dashboard' : 'Sign In'
 
   return (
     <>
@@ -51,6 +75,12 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <Link
+              to="/dashboard"
+              className="hidden rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 md:inline-flex"
+            >
+              {authLabel}
+            </Link>
             <Link
               to="/trial"
               className="hidden rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#082f58] md:inline-flex"
@@ -91,6 +121,13 @@ export default function Header() {
                   {item.label}
                 </NavLink>
               ))}
+              <Link
+                to="/dashboard"
+                onClick={() => setIsOpen(false)}
+                className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold text-slate-700"
+              >
+                {authLabel}
+              </Link>
             </div>
           </nav>
         ) : null}
